@@ -1,0 +1,15 @@
+ISL BLADE - Firebase preparado
+
+Incluido: google-services.json, Google Services Gradle plugin, Firebase Auth e Firestore SDK, login Google nativo na aba Perfil.
+
+Ainda precisa na sua conta Firebase:
+1. Registrar SHA-1 da chave debug (e SHA-1 da chave de release para Play Store).
+2. Baixar novamente google-services.json apos registrar SHA-1 e substituir app/google-services.json.
+3. Criar Firestore no console e publicar as regras de firestore.rules.
+4. Implementar o fluxo de publicacao/curtidas/perfis no Firestore; o editor e curtidas atuais permanecem locais.
+
+No terminal do Android Studio, na pasta deste projeto:
+   gradlew.bat signingReport
+Copie o SHA1 da variante debug e adicione em Configuracoes do projeto > Seus apps > Android > Impressao digital.
+
+OBS: O APK nao foi compilado neste ambiente. Teste o login em um aparelho Android com Google Play Services.

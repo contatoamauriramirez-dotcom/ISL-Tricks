@@ -1,0 +1,2 @@
+ISL Tricks - Catálogo expandido: 400 manobras em 48 famílias.
+Abra a pasta principal no Android Studio e use Build > Assemble Project.

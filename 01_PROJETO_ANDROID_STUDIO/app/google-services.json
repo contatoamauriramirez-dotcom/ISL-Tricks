@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "546286905575",
+    "project_id": "isl-blade",
+    "storage_bucket": "isl-blade.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:546286905575:android:f326f4cbabceb0a13bda42",
+        "android_client_info": {
+          "package_name": "com.itu.isl"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "546286905575-qr2gbs30h74e3msmmesf2q3v3vo3ug0o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.itu.isl",
+            "certificate_hash": "c414f66099e1ee5fcdefc587683577a53db295d1"
+          }
+        },
+        {
+          "client_id": "546286905575-064he6dovn151ar2clbteq94cgq7rh9s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDy9lRvd6AbvV5RCDeDPcM-OQu5DCpALeI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "546286905575-064he6dovn151ar2clbteq94cgq7rh9s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
