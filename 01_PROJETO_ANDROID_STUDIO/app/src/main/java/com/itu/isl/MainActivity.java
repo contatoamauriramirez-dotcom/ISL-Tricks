@@ -80,7 +80,15 @@ public class MainActivity extends Activity {
     GoogleSignInOptions options=new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
       .requestIdToken(getString(com.itu.isl.R.string.default_web_client_id)).requestEmail().build();
     googleClient=GoogleSignIn.getClient(this,options);
-    web=new WebView(this);setContentView(web);
+    web=new WebView(this);
+    // Mantém o conteúdo abaixo da barra de status e acima da barra de navegação (Android 15 desenha de ponta a ponta).
+    android.widget.FrameLayout frame=new android.widget.FrameLayout(this);frame.setBackgroundColor(0xff0b0b0d);
+    frame.addView(web,new android.widget.FrameLayout.LayoutParams(-1,-1));setContentView(frame);
+    frame.setOnApplyWindowInsetsListener((v,insets)->{
+      int l,t,r,b;
+      if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets i=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());l=i.left;t=i.top;r=i.right;b=i.bottom;}
+      else{l=insets.getSystemWindowInsetLeft();t=insets.getSystemWindowInsetTop();r=insets.getSystemWindowInsetRight();b=insets.getSystemWindowInsetBottom();}
+      v.setPadding(l,t,r,b);return insets;});
     web.addJavascriptInterface(new AccountBridge(),"ISLAccount");
     web.addJavascriptInterface(new MapsBridge(),"ISLMaps");
     WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);

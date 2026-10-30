@@ -498,7 +498,7 @@ tricks.forEach(t=>{t.score=trickScore(t);t.level=LEVEL_OVERRIDES[t.id]||scoreToL
 const levelRank=l=>{const i=LEVELS.indexOf(l);return i<0?99:i};
 const levelBadge=l=>`<span class="lvl lvl-${levelRank(l)+1}">${esc(l)}</span>`;
 let levelFilter='Todos',grindMode='Manobras';
-function openFamily(cat){filter=cat;renderList();window.scrollTo(0,0)}
+function openFamily(cat){const y=window.scrollY;filter=cat;renderList();window.scrollTo(0,y)}
 function setLevelFilter(l){levelFilter=l;renderGrindBody()}
 function setGrindMode(m){grindMode=m;selected=null;render();window.scrollTo(0,0)}
 function openTrick(id){selected=id;render();window.scrollTo(0,0)}
