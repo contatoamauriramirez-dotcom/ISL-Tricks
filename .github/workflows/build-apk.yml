@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-24.04
@@ -28,3 +31,11 @@ jobs:
         with:
           name: ISL-BLADE-apk
           path: 01_PROJETO_ANDROID_STUDIO/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publicar APK para download
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk ISL_BLADE.apk
+          TAG="v1.0-build${{ github.run_number }}"
+          gh release create "$TAG" ISL_BLADE.apk --title "ISL BLADE — build ${{ github.run_number }}" --notes "APK de teste para instalar no Android." --latest
