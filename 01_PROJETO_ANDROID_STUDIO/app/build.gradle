@@ -3,6 +3,12 @@ android {
     namespace 'com.itu.isl'
     compileSdk 35
     defaultConfig { applicationId 'com.itu.isl'; minSdk 24; targetSdk 35; versionCode 1; versionName '1.0' }
+    // Chave fixa de teste: permite instalar novas versões por cima da anterior.
+    // Não use esta chave para publicar na Play Store.
+    signingConfigs {
+        debug { storeFile file('isl-debug.keystore'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' }
+    }
+    buildTypes { debug { signingConfig signingConfigs.debug } }
 }
 
 // Firebase SDK - Google Authentication + Firestore
