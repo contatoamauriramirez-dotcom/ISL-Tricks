@@ -12,6 +12,7 @@ ENDPOINTS = ["https://overpass-api.de/api/interpreter",
              "https://overpass.kumi.systems/api/interpreter",
              "https://overpass.private.coffee/api/interpreter"]
 
+import os; os.makedirs("data", exist_ok=True)
 LOG=open("data/pistas_log.txt","w")
 def log(*a):
     print(*a); print(*a, file=LOG); LOG.flush()
