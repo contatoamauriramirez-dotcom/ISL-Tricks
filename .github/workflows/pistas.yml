@@ -12,11 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Baixar pistas do OpenStreetMap
-        run: python3 tools/baixar_pistas.py
+        run: |
+          pip install reverse_geocoder
+          python3 tools/baixar_pistas.py
       - name: Salvar no repositório
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/pistas_brasil.json
+          git add data/
           git commit -m "Atualiza pistas do Brasil (OpenStreetMap)" || echo "sem mudanças"
           git push
