@@ -1,0 +1,22 @@
+name: Atualizar pistas do Brasil (OpenStreetMap)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pistas:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Baixar pistas do OpenStreetMap
+        run: python3 tools/baixar_pistas.py
+      - name: Salvar no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/pistas_brasil.json
+          git commit -m "Atualiza pistas do Brasil (OpenStreetMap)" || echo "sem mudanças"
+          git push
