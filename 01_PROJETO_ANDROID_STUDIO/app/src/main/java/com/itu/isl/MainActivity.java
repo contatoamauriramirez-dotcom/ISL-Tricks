@@ -11,6 +11,9 @@ import android.webkit.JavascriptInterface;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.SetOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -73,10 +76,39 @@ public class MainActivity extends Activity {
     final String js="window.dispatchEvent(new CustomEvent('isl-auth',{detail:"+payload+"}));";
     runOnUiThread(()->{if(web!=null)web.evaluateJavascript(js,null);});
   }
+  private void sendJs(String event,String json){final String js="window.dispatchEvent(new CustomEvent('"+event+"',{detail:"+json+"}));";runOnUiThread(()->{if(web!=null)web.evaluateJavascript(js,null);});}
+  private void sendAuthError(int code,String msg){try{org.json.JSONObject o=new org.json.JSONObject();o.put("code",code);o.put("message",msg==null?"":msg);sendJs("isl-auth-error",o.toString());}catch(Exception e){}}
+  // Cria (ou atualiza) o usuário em users/{uid} no Firestore.
+  private void createUserDoc(FirebaseUser u){
+    if(u==null)return;
+    FirebaseFirestore db=FirebaseFirestore.getInstance();
+    java.util.Map<String,Object> base=new java.util.HashMap<>();
+    base.put("name",u.getDisplayName());base.put("email",u.getEmail());
+    base.put("photo",u.getPhotoUrl()==null?"":u.getPhotoUrl().toString());base.put("lastLogin",FieldValue.serverTimestamp());
+    db.collection("users").document(u.getUid()).get().addOnCompleteListener(t->{
+      boolean novo=!t.isSuccessful()||t.getResult()==null||!t.getResult().exists();
+      if(novo)base.put("createdAt",FieldValue.serverTimestamp());
+      db.collection("users").document(u.getUid()).set(base,SetOptions.merge())
+        .addOnSuccessListener(x->sendJs("isl-cloud",novo?"{\"ok\":true,\"created\":true}":"{\"ok\":true}"))
+        .addOnFailureListener(e->sendJs("isl-cloud","{\"ok\":false}"));
+      if(!novo&&t.getResult()!=null){try{org.json.JSONObject o=new org.json.JSONObject(t.getResult().getData());sendJs("isl-profile",o.toString());}catch(Exception e){}}
+    });
+  }
   public class AccountBridge {
     @JavascriptInterface public void signIn(){runOnUiThread(()->startActivityForResult(googleClient.getSignInIntent(),GOOGLE_LOGIN));}
     @JavascriptInterface public void signOut(){firebaseAuth.signOut();googleClient.signOut();sendAuthState();}
     @JavascriptInterface public void getAccount(){sendAuthState();}
+    // Salva apelido, cidade e bio do patinador no perfil da nuvem.
+    @JavascriptInterface public void saveProfile(String json){
+      FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null)return;
+      try{org.json.JSONObject o=new org.json.JSONObject(json);java.util.Map<String,Object> m=new java.util.HashMap<>();
+        for(String k:new String[]{"nickname","city","bio"})if(o.has(k))m.put(k,o.optString(k,"").trim());
+        m.put("updatedAt",FieldValue.serverTimestamp());
+        FirebaseFirestore.getInstance().collection("users").document(u.getUid()).set(m,SetOptions.merge())
+          .addOnSuccessListener(x->sendJs("isl-cloud","{\"ok\":true,\"saved\":true}"))
+          .addOnFailureListener(e->sendJs("isl-cloud","{\"ok\":false,\"saved\":false}"));
+      }catch(Exception e){sendJs("isl-cloud","{\"ok\":false}");}
+    }
   }
   @Override public void onCreate(Bundle state){super.onCreate(state);
     getWindow().setStatusBarColor(0xff000000);getWindow().setNavigationBarColor(0xff000000);
@@ -111,8 +143,12 @@ public class MainActivity extends Activity {
       Task<GoogleSignInAccount> task=GoogleSignIn.getSignedInAccountFromIntent(data);
       try{GoogleSignInAccount account=task.getResult(ApiException.class);
         firebaseAuth.signInWithCredential(GoogleAuthProvider.getCredential(account.getIdToken(),null))
-          .addOnCompleteListener(this,authTask -> {sendAuthState();});
-      }catch(Exception ex){android.util.Log.e("ISL","Google login failed",ex);sendAuthState();}
+          .addOnCompleteListener(this,authTask -> {
+            if(authTask.isSuccessful()){createUserDoc(firebaseAuth.getCurrentUser());}
+            else{sendAuthError(-2,authTask.getException()==null?"":authTask.getException().getMessage());}
+            sendAuthState();});
+      }catch(ApiException ex){android.util.Log.e("ISL","Google login failed",ex);sendAuthError(ex.getStatusCode(),ex.getMessage());sendAuthState();}
+      catch(Exception ex){android.util.Log.e("ISL","Google login failed",ex);sendAuthError(-1,ex.getMessage());sendAuthState();}
       return;
     }
     if(request==PICK_VIDEO&&pending!=null){pending.onReceiveValue(result==RESULT_OK&&data!=null&&data.getData()!=null?new android.net.Uri[]{data.getData()}:null);pending=null;}}

@@ -1,15 +1,17 @@
-ISL BLADE - Firebase preparado
+ISL BLADE - Login com Google (Firebase)
 
-Incluido: google-services.json, Google Services Gradle plugin, Firebase Auth e Firestore SDK, login Google nativo na aba Perfil.
+O app já tem: botão "Entrar com Google" no Perfil, criação do usuário em users/{uid}
+no Firestore (nome, e-mail, foto, data de criação e último acesso) e o salvamento de
+apelido, cidade e bio na conta.
 
-Ainda precisa na sua conta Firebase:
-1. Registrar SHA-1 da chave debug (e SHA-1 da chave de release para Play Store).
-2. Baixar novamente google-services.json apos registrar SHA-1 e substituir app/google-services.json.
-3. Criar Firestore no console e publicar as regras de firestore.rules.
-4. Implementar o fluxo de publicacao/curtidas/perfis no Firestore; o editor e curtidas atuais permanecem locais.
+Para o login funcionar, faça uma vez no console do Firebase (projeto isl-blade):
 
-No terminal do Android Studio, na pasta deste projeto:
-   gradlew.bat signingReport
-Copie o SHA1 da variante debug e adicione em Configuracoes do projeto > Seus apps > Android > Impressao digital.
+1. Configurações do projeto > Seus apps > Android (com.itu.isl) > Adicionar impressão digital
+   SHA-1 da chave usada nos APKs do GitHub (app/isl-debug.keystore):
+   F1:C7:77:E4:27:67:7B:B2:52:26:2E:D1:9D:67:BB:CA:BA:57:5A:61
+2. Authentication > Método de login > Google > Ativar (e escolher o e-mail de suporte).
+3. Firestore Database > Criar banco de dados (modo produção, região southamerica-east1)
+   e publicar as regras do arquivo firestore.rules.
 
-OBS: O APK nao foi compilado neste ambiente. Teste o login em um aparelho Android com Google Play Services.
+Sem o passo 1, o login mostra "erro 10". Para publicar na Play Store, cadastre também
+o SHA-1 da chave de assinatura de release / Play App Signing.
