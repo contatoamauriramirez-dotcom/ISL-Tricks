@@ -37,5 +37,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk ISL_BLADE.apk
-          TAG="v1.0-build${{ github.run_number }}"
+          TAG="v1.0-build${{ github.run_number }}-${{ github.run_attempt }}-${{ github.run_id }}"
           gh release create "$TAG" ISL_BLADE.apk --title "ISL BLADE — build ${{ github.run_number }}" --notes "APK de teste para instalar no Android." --latest
