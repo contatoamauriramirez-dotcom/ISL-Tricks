@@ -56,6 +56,10 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void locate(){runOnUiThread(()->locateOnDevice());}
     @JavascriptInterface public void openMap(String url){runOnUiThread(()->{try{if(url.startsWith("https://www.openstreetmap.org/"))startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){mapMessage("Não foi possível abrir o mapa.");}});}
   }
+  public class LinksBridge{
+    // Abre links externos (fontes dos artigos) no navegador do celular. Só aceita HTTPS.
+    @JavascriptInterface public void open(String url){runOnUiThread(()->{try{if(url!=null&&url.startsWith("https://"))startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){}});}
+  }
   private GoogleSignInClient googleClient;
   private FirebaseAuth firebaseAuth;
   private void sendAuthState(){
@@ -90,7 +94,7 @@ public class MainActivity extends Activity {
       else{l=insets.getSystemWindowInsetLeft();t=insets.getSystemWindowInsetTop();r=insets.getSystemWindowInsetRight();b=insets.getSystemWindowInsetBottom();}
       v.setPadding(l,t,r,b);return insets;});
     web.addJavascriptInterface(new AccountBridge(),"ISLAccount");
-    web.addJavascriptInterface(new MapsBridge(),"ISLMaps");
+    web.addJavascriptInterface(new MapsBridge(),"ISLMaps");web.addJavascriptInterface(new LinksBridge(),"ISLLinks");
     WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
     s.setAllowFileAccess(true);s.setMediaPlaybackRequiresUserGesture(false);
     web.setWebViewClient(new WebViewClient());
