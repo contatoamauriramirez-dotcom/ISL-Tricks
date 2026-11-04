@@ -16,7 +16,7 @@ service cloud.firestore {
    allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
    allow update: if false;
   }
-  // "Eu fui": cada pessoa marca só a própria presença (id = evento__uid).
+  // "Tô dentro": cada pessoa marca só a própria presença (id = evento__uid).
   match /went/{docId} {
    allow read: if request.auth != null;
    allow create, update: if request.auth != null

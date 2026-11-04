@@ -151,7 +151,7 @@ public class MainActivity extends Activity {
         if(o.optBoolean("share",true)){java.util.Map<String,Object> d=new java.util.HashMap<>();d.put("parkKey",o.optString("parkKey",""));d.put("parkName",o.optString("parkName",""));
           addPost(u,"checkin","Estou na pista "+o.optString("parkName","")+" ("+o.optString("city","")+" · "+o.optString("uf","")+")",d);}
       }catch(Exception e){sendJs("isl-community-error",errJson(e));}}
-    // "Eu fui": marca presença no evento (documento went/{evento}__{uid}) e pode publicar no feed.
+    // "Tô dentro": marca presença no evento (documento went/{evento}__{uid}) e pode publicar no feed.
     @JavascriptInterface public void markWent(String json){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
       try{org.json.JSONObject o=new org.json.JSONObject(json);String key=o.optString("eventKey","").replaceAll("[^A-Za-z0-9_-]","");if(key.isEmpty())return;
         java.util.Map<String,Object> m=new java.util.HashMap<>();m.put("eventKey",key);m.put("uid",u.getUid());
@@ -159,7 +159,7 @@ public class MainActivity extends Activity {
         m.put("title",o.optString("title",""));m.put("at",FieldValue.serverTimestamp());
         FirebaseFirestore.getInstance().collection("went").document(key+"__"+u.getUid()).set(m)
           .addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"went\"}")).addOnFailureListener(e->sendJs("isl-community-error",errJson(e)));
-        if(o.optBoolean("share",false)){java.util.Map<String,Object> d=new java.util.HashMap<>();d.put("eventKey",key);addPost(u,"event","Eu fui: "+o.optString("title","")+"!",d);}
+        if(o.optBoolean("share",false)){java.util.Map<String,Object> d=new java.util.HashMap<>();d.put("eventKey",key);addPost(u,"event","Tô dentro: "+o.optString("title","")+"!",d);}
       }catch(Exception e){sendJs("isl-community-error",errJson(e));}}
     @JavascriptInterface public void unmarkWent(String key){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null)return;
       String k=key==null?"":key.replaceAll("[^A-Za-z0-9_-]","");FirebaseFirestore.getInstance().collection("went").document(k+"__"+u.getUid()).delete();}

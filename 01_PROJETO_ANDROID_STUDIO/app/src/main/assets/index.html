@@ -1034,7 +1034,7 @@ function parkCheckOut(){try{window.ISLCommunity.checkOut()}catch(e){}}
 function parkRefreshCounts(){document.querySelectorAll('.park-live[data-key]').forEach(el=>{const n=parkCount(el.dataset.key);const mine=myCheckin()&&myCheckin().parkKey===el.dataset.key;el.innerHTML=n?`<i></i>${n} ${n===1?'pessoa':'pessoas'} agora`:'';el.classList.toggle('on',n>0);const b=el.closest('.park-card')&&el.closest('.park-card').querySelector('.park-btn.here');if(b){b.textContent=mine?'Saí':'Estou aqui';b.classList.toggle('mine',!!mine)}})}
 
 /* --- telas --- */
-const COM_TYPES={text:['💬','Post'],checkin:['📍','Na pista'],trick:['✓','Manobra nova'],challenge:['🏆','Desafio da semana'],combo:['🔥','Combo'],robot:['🤖','Contra o robô'],event:['✋','Eu fui']};
+const COM_TYPES={text:['💬','Post'],checkin:['📍','Na pista'],trick:['✓','Manobra nova'],challenge:['🏆','Desafio da semana'],combo:['🔥','Combo'],robot:['🤖','Contra o robô'],event:['🙌','Tô dentro']};
 function timeAgo(ms){const s=Math.max(1,Math.round((Date.now()-ms)/1000));if(s<60)return 'agora';const m=Math.round(s/60);if(m<60)return m+' min';const h=Math.round(m/60);if(h<24)return h+' h';const d=Math.round(h/24);return d+(d===1?' dia':' dias')}
 function comAvatar(name,photo,cls='com-av'){return photo?`<img class="${cls}" src="${hubText(photo)}" alt="" referrerpolicy="no-referrer">`:`<span class="${cls} ini">${hubText((name||'?').trim().charAt(0).toUpperCase())}</span>`}
 function comLoginCard(){return `<div class="hub-card acc-card"><h3>Participe da comunidade</h3><p class="hub-mini">Entre com a sua conta Google para ver quem está nas pistas agora, fazer check-in e compartilhar a sua evolução.</p><button class="g-btn" onclick="islSignIn()" ${islAuthBusy?'disabled':''}>${G_LOGO}<span>${islAuthBusy?'Abrindo o Google…':'Entrar com Google'}</span></button>${islAuthMsg?`<p class="acc-msg">${hubText(islAuthMsg)}</p>`:''}</div>`}
@@ -1066,21 +1066,21 @@ function shareCombo(){comShare('combo',`Fiz um combo de ${combo.best} ${combo.be
 function shareRobot(){comShare('robot',`Acertei ${robot.landed} ${robot.landed===1?'manobra':'manobras'} no B.L.A.D.E. contra o robô (nível ${robot.level})!`,{landed:robot.landed,level:robot.level})}
 
 
-/* ===== "Eu fui": presença em eventos ===== */
+/* ===== "Tô dentro": presença em eventos ===== */
 const EVENT_NAMES={900001:'Mundial de Street 2026, em Assunção',900002:'Mundial de Vert 2026, em Assunção',900003:'Blading Cup Santa Ana 2026',900004:'Campeonato Nordeste de Patins Street, em Natal',900005:'Winterclash 2026',900006:'Winterclash 2027',900007:'5º Campeonato Brasileiro de Patins Street, em Brasília',900008:'5º Campeonato Brasileiro de Patins Street, em Brasília',900009:'Blading Cup Asia 2026, em Jacarta',900010:'FISE Montpellier 2026'};
 let comWent=[];
 if(!Array.isArray(hub.went))hub.went=[];
 window.addEventListener('isl-went',e=>{comWent=Array.isArray(e.detail)?e.detail:[];if(tab==='Home'||(tab==='Comunidade'&&comMode==='eventos'))render()});
-window.addEventListener('isl-community-ok',e=>{if((e.detail||{}).action==='went')showToast('Presença marcada!')});
+window.addEventListener('isl-community-ok',e=>{if((e.detail||{}).action==='went')showToast('Você tá dentro!')});
 function wentPeople(key){return comWent.filter(w=>w.eventKey===key)}
 function iWent(key){return hub.went.includes(key)}
 function toggleWent(key,title){
  const on=!iWent(key);hub.went=on?[...hub.went,key]:hub.went.filter(k=>k!==key);hubSave();
  if(hasCommunity()&&islAccount){try{on?window.ISLCommunity.markWent(JSON.stringify({eventKey:key,title,share:false})):window.ISLCommunity.unmarkWent(key)}catch(e){}}
- if(on)offerShare('event',`Eu fui: ${title}!`,{eventKey:key});
+ if(on)offerShare('event',`Tô dentro: ${title}!`,{eventKey:key});
  render()}
 function wentBlock(key,title,big=false){const ppl=wentPeople(key);const n=Math.max(ppl.length,iWent(key)&&!ppl.some(p=>islAccount&&p.uid===islAccount.uid)?ppl.length+1:ppl.length);const on=iWent(key);
- return `<div class="went ${big?'big':''}"><span role="button" tabindex="0" class="went-btn ${on?'on':''}" data-k="${hubText(key)}" data-t="${hubText(title)}" onclick="event.stopPropagation();toggleWent(this.dataset.k,this.dataset.t)" onkeydown="if(event.key==='Enter'){event.stopPropagation();toggleWent(this.dataset.k,this.dataset.t)}">${on?'✓ Eu fui':'✋ Eu fui'}</span>${n?`<span class="went-count"><span class="com-faces">${ppl.slice(0,5).map(p=>comAvatar(p.name,p.photo,'com-face')).join('')}</span>${n} ${n===1?'pessoa foi':'pessoas foram'}</span>`:`<span class="went-count muted">Seja o primeiro a marcar</span>`}</div>`}
+ return `<div class="went ${big?'big':''}"><span role="button" tabindex="0" class="went-btn ${on?'on':''}" data-k="${hubText(key)}" data-t="${hubText(title)}" onclick="event.stopPropagation();toggleWent(this.dataset.k,this.dataset.t)" onkeydown="if(event.key==='Enter'){event.stopPropagation();toggleWent(this.dataset.k,this.dataset.t)}">${on?'✓ Tô dentro':'🙌 Tô dentro'}</span>${n?`<span class="went-count"><span class="com-faces">${ppl.slice(0,5).map(p=>comAvatar(p.name,p.photo,'com-face')).join('')}</span>${n} ${n===1?'pessoa tá dentro':'pessoas tão dentro'}</span>`:`<span class="went-count muted">Seja o primeiro a marcar</span>`}</div>`}
 
 function renderHubProfile(){root.innerHTML=`<h1 class="hub-title">Perfil</h1>${accountCard()}<div class="hub-card"><h3>${hubText(hub.profile.name||'Patinador ISL')}</h3>${hub.profile.city?`<p class="hub-mini">⌖ ${hubText(hub.profile.city)}</p>`:''}<p class="hub-mini">${hubText(hub.profile.bio||'Sua jornada no aggressive inline.')}</p><div class="hub-row"><div class="hub-stat"><strong>${total()}</strong><small>Manobras</small></div><div class="hub-stat"><strong>${hub.spots.length}</strong><small>Pistas</small></div><div class="hub-stat"><strong>${hub.joined.length}</strong><small>Eventos</small></div></div></div><div class="hub-card"><h3>Editar perfil</h3><input class="hub-field" id="hubName" maxlength="60" placeholder="Nome ou apelido de patinador" value="${hubText(hub.profile.name)}"><input class="hub-field" id="hubCity" maxlength="60" placeholder="Sua cidade" value="${hubText(hub.profile.city||'')}"><textarea class="hub-field" id="hubBio" rows="2" maxlength="200" placeholder="Sobre você">${hubText(hub.profile.bio)}</textarea><button class="hub-cta" onclick="hubSaveProfile()">Salvar perfil</button></div><div class="sec-title">Minha evolução</div><div class="list-group">${[['Progresso','Progresso das manobras','<path d="M4 19h4v-5H4zM10 19h4V9h-4zM16 19h4V4h-4z"/>',''],['Jogos','Jogos','<path d="M5 19L19 5M14 5h5v5M5 14l5 5"/>',''],['Grinds','Catálogo de grinds','<path d="M3 17h18M7 13h10l1-7H8.5z"/>','dark']].map(([t,l,ic,c])=>`<button class="list-row" onclick="hubTab('${t}')"><span class="tile ${c}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg></span><span class="grow">${l}</span><span class="chev">›</span></button>`).join('')}</div>${hubNotice()}`}
 
