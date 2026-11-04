@@ -47,6 +47,13 @@ def main():
         if t.get("surface"): p["s"] = t["surface"]
         if t.get("lit") == "yes": p["l"] = 1
         if t.get("access") in ("private", "customers"): p["p"] = 1
+        # Fotos com licença aberta: Wikimedia Commons e Mapillary (CC BY-SA).
+        wc = t.get("wikimedia_commons", "")
+        img = t.get("image", "")
+        if wc.startswith("File:"): p["wc"] = wc[5:]
+        elif "commons.wikimedia.org" in img and "File:" in img: p["wc"] = img.split("File:")[-1]
+        elif "upload.wikimedia.org" in img: p["wu"] = img
+        if t.get("mapillary"): p["mp"] = t["mapillary"]
         pistas.append(p)
     import reverse_geocoder as rg, unicodedata
     res = rg.search([(p["lat"], p["lon"]) for p in pistas], mode=1) if pistas else []
@@ -62,6 +69,6 @@ def main():
     unicos.sort(key=lambda p: (p.get("uf", ""), p.get("c", ""), p.get("n", "")))
     out = {"fonte": "© colaboradores do OpenStreetMap (ODbL)", "gerado": time.strftime("%Y-%m-%d"), "total": len(unicos), "pistas": unicos}
     json.dump(out, open("data/pistas_brasil.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    log("pistas:", len(unicos), "sem nome:", sum(1 for p in unicos if not p["n"]))
+    log("pistas:", len(unicos), "sem nome:", sum(1 for p in unicos if not p["n"]), "commons:", sum(1 for p in unicos if p.get("wc") or p.get("wu")), "mapillary:", sum(1 for p in unicos if p.get("mp")))
 
 main()
