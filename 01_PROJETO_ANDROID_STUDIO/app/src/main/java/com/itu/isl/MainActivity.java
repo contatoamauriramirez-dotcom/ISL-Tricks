@@ -98,13 +98,13 @@ public class MainActivity extends Activity {
     });
   }
   // ===== Comunidade: feed e check-in nas pistas, em tempo real (Firestore) =====
-  private ListenerRegistration postsReg, checkinsReg;
+  private ListenerRegistration postsReg, checkinsReg, wentReg;
   private static final long CHECKIN_MS=3L*60*60*1000;
   private String errJson(Exception e){try{org.json.JSONObject o=new org.json.JSONObject();o.put("message",e==null?"":String.valueOf(e.getMessage()));return o.toString();}catch(Exception x){return "{}";}}
   private long ms(Object v){if(v instanceof com.google.firebase.Timestamp)return ((com.google.firebase.Timestamp)v).toDate().getTime();if(v instanceof Number)return ((Number)v).longValue();return System.currentTimeMillis();}
   private java.util.Map<String,Object> jsonToMap(org.json.JSONObject o){java.util.Map<String,Object> m=new java.util.HashMap<>();if(o==null)return m;
     java.util.Iterator<String> it=o.keys();while(it.hasNext()){String k=it.next();Object v=o.opt(k);if(v instanceof String){String sv=(String)v;m.put(k,sv.length()>200?sv.substring(0,200):sv);}else if(v instanceof Number||v instanceof Boolean)m.put(k,v);}return m;}
-  private void stopCommunity(){if(postsReg!=null){postsReg.remove();postsReg=null;}if(checkinsReg!=null){checkinsReg.remove();checkinsReg=null;}}
+  private void stopCommunity(){if(postsReg!=null){postsReg.remove();postsReg=null;}if(checkinsReg!=null){checkinsReg.remove();checkinsReg=null;}if(wentReg!=null){wentReg.remove();wentReg=null;}}
   private void startCommunity(){
     FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
     FirebaseFirestore db=FirebaseFirestore.getInstance();
@@ -122,6 +122,12 @@ public class MainActivity extends Activity {
         for(String k:new String[]{"name","photo","parkKey","parkName","city","uf"})o.put(k,d.getString(k)==null?"":d.getString(k));
         o.put("expiresAt",ms(d.get("expiresAt")));o.put("at",ms(d.get("at")));arr.put(o);}catch(Exception e){}}
       sendJs("isl-checkins",arr.toString());});
+    if(wentReg==null)wentReg=db.collection("went").limit(5000).addSnapshotListener((snap,err)->{
+      if(err!=null){sendJs("isl-community-error",errJson(err));return;}
+      org.json.JSONArray arr=new org.json.JSONArray();
+      for(DocumentSnapshot d:snap.getDocuments()){try{org.json.JSONObject o=new org.json.JSONObject();
+        for(String k:new String[]{"eventKey","uid","name","photo"})o.put(k,d.getString(k)==null?"":d.getString(k));arr.put(o);}catch(Exception e){}}
+      sendJs("isl-went",arr.toString());});
   }
   private void addPost(FirebaseUser u,String type,String text,java.util.Map<String,Object> data){
     java.util.Map<String,Object> m=new java.util.HashMap<>();m.put("uid",u.getUid());m.put("name",u.getDisplayName()==null?"Patinador ISL":u.getDisplayName());
@@ -145,6 +151,18 @@ public class MainActivity extends Activity {
         if(o.optBoolean("share",true)){java.util.Map<String,Object> d=new java.util.HashMap<>();d.put("parkKey",o.optString("parkKey",""));d.put("parkName",o.optString("parkName",""));
           addPost(u,"checkin","Estou na pista "+o.optString("parkName","")+" ("+o.optString("city","")+" · "+o.optString("uf","")+")",d);}
       }catch(Exception e){sendJs("isl-community-error",errJson(e));}}
+    // "Eu fui": marca presença no evento (documento went/{evento}__{uid}) e pode publicar no feed.
+    @JavascriptInterface public void markWent(String json){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
+      try{org.json.JSONObject o=new org.json.JSONObject(json);String key=o.optString("eventKey","").replaceAll("[^A-Za-z0-9_-]","");if(key.isEmpty())return;
+        java.util.Map<String,Object> m=new java.util.HashMap<>();m.put("eventKey",key);m.put("uid",u.getUid());
+        m.put("name",u.getDisplayName()==null?"Patinador ISL":u.getDisplayName());m.put("photo",u.getPhotoUrl()==null?"":u.getPhotoUrl().toString());
+        m.put("title",o.optString("title",""));m.put("at",FieldValue.serverTimestamp());
+        FirebaseFirestore.getInstance().collection("went").document(key+"__"+u.getUid()).set(m)
+          .addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"went\"}")).addOnFailureListener(e->sendJs("isl-community-error",errJson(e)));
+        if(o.optBoolean("share",false)){java.util.Map<String,Object> d=new java.util.HashMap<>();d.put("eventKey",key);addPost(u,"event","Eu fui: "+o.optString("title","")+"!",d);}
+      }catch(Exception e){sendJs("isl-community-error",errJson(e));}}
+    @JavascriptInterface public void unmarkWent(String key){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null)return;
+      String k=key==null?"":key.replaceAll("[^A-Za-z0-9_-]","");FirebaseFirestore.getInstance().collection("went").document(k+"__"+u.getUid()).delete();}
     @JavascriptInterface public void checkOut(){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null)return;
       FirebaseFirestore.getInstance().collection("checkins").document(u.getUid()).delete().addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"checkout\"}"));}
   }

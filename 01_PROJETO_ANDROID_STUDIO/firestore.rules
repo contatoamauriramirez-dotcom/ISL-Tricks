@@ -12,9 +12,17 @@ service cloud.firestore {
      && request.resource.data.text is string
      && request.resource.data.text.size() > 0
      && request.resource.data.text.size() <= 500
-     && request.resource.data.type in ['text','checkin','trick','challenge','combo','robot'];
+     && request.resource.data.type in ['text','checkin','trick','challenge','combo','robot','event'];
    allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
    allow update: if false;
+  }
+  // "Eu fui": cada pessoa marca só a própria presença (id = evento__uid).
+  match /went/{docId} {
+   allow read: if request.auth != null;
+   allow create, update: if request.auth != null
+     && request.resource.data.uid == request.auth.uid
+     && docId == request.resource.data.eventKey + '__' + request.auth.uid;
+   allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
   }
   match /checkins/{userId} {
    allow read: if request.auth != null;
