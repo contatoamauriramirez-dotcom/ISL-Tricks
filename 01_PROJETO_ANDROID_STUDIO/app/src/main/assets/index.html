@@ -1010,7 +1010,7 @@ window.addEventListener('isl-community-ok',e=>{const a=(e.detail||{}).action;if(
 setInterval(()=>{if(comCheckins.some(c=>c.expiresAt<Date.now()))comRerender()},60000);
 
 /* --- aviso rápido na parte de baixo (com ação opcional) --- */
-function showToast(text,actionLabel,action){comToast={text,actionLabel,action};let el=document.getElementById('islToast');if(!el){el=document.createElement('div');el.id='islToast';document.body.appendChild(el)}
+function showToast(text,actionLabel,action){let el=document.getElementById('islToast');if(!actionLabel&&el&&el.className==='show'&&comToast&&comToast.actionLabel)return;comToast={text,actionLabel,action};if(!el){el=document.createElement('div');el.id='islToast';document.body.appendChild(el)}
  el.innerHTML=`<span>${hubText(text)}</span>${actionLabel?`<button onclick="toastAction()">${hubText(actionLabel)}</button>`:''}<button class="tx" onclick="hideToast()" aria-label="Fechar">✕</button>`;el.className='show';clearTimeout(comToastTimer);comToastTimer=setTimeout(hideToast,actionLabel?7000:3500)}
 function hideToast(){const el=document.getElementById('islToast');if(el)el.className=''}
 function toastAction(){const a=comToast&&comToast.action;hideToast();if(a)a()}
@@ -1071,7 +1071,7 @@ const EVENT_NAMES={900001:'Mundial de Street 2026, em Assunção',900002:'Mundia
 let comWent=[];
 if(!Array.isArray(hub.went))hub.went=[];
 window.addEventListener('isl-went',e=>{comWent=Array.isArray(e.detail)?e.detail:[];if(tab==='Home'||(tab==='Comunidade'&&comMode==='eventos'))render()});
-window.addEventListener('isl-community-ok',e=>{if((e.detail||{}).action==='went')showToast('Você tá dentro!')});
+
 function wentPeople(key){return comWent.filter(w=>w.eventKey===key)}
 function iWent(key){return hub.went.includes(key)}
 function toggleWent(key,title){
