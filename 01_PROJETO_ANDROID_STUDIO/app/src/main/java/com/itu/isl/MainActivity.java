@@ -14,6 +14,9 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -94,9 +97,60 @@ public class MainActivity extends Activity {
       if(!novo&&t.getResult()!=null){try{org.json.JSONObject o=new org.json.JSONObject(t.getResult().getData());sendJs("isl-profile",o.toString());}catch(Exception e){}}
     });
   }
+  // ===== Comunidade: feed e check-in nas pistas, em tempo real (Firestore) =====
+  private ListenerRegistration postsReg, checkinsReg;
+  private static final long CHECKIN_MS=3L*60*60*1000;
+  private String errJson(Exception e){try{org.json.JSONObject o=new org.json.JSONObject();o.put("message",e==null?"":String.valueOf(e.getMessage()));return o.toString();}catch(Exception x){return "{}";}}
+  private long ms(Object v){if(v instanceof com.google.firebase.Timestamp)return ((com.google.firebase.Timestamp)v).toDate().getTime();if(v instanceof Number)return ((Number)v).longValue();return System.currentTimeMillis();}
+  private java.util.Map<String,Object> jsonToMap(org.json.JSONObject o){java.util.Map<String,Object> m=new java.util.HashMap<>();if(o==null)return m;
+    java.util.Iterator<String> it=o.keys();while(it.hasNext()){String k=it.next();Object v=o.opt(k);if(v instanceof String){String sv=(String)v;m.put(k,sv.length()>200?sv.substring(0,200):sv);}else if(v instanceof Number||v instanceof Boolean)m.put(k,v);}return m;}
+  private void stopCommunity(){if(postsReg!=null){postsReg.remove();postsReg=null;}if(checkinsReg!=null){checkinsReg.remove();checkinsReg=null;}}
+  private void startCommunity(){
+    FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
+    FirebaseFirestore db=FirebaseFirestore.getInstance();
+    if(postsReg==null)postsReg=db.collection("posts").orderBy("createdAt",Query.Direction.DESCENDING).limit(60).addSnapshotListener((snap,err)->{
+      if(err!=null){sendJs("isl-community-error",errJson(err));return;}
+      org.json.JSONArray arr=new org.json.JSONArray();
+      for(DocumentSnapshot d:snap.getDocuments()){try{org.json.JSONObject o=new org.json.JSONObject();o.put("id",d.getId());
+        for(String k:new String[]{"uid","name","photo","type","text"})o.put(k,d.getString(k)==null?"":d.getString(k));
+        o.put("createdAt",ms(d.get("createdAt")));Object data=d.get("data");if(data instanceof java.util.Map)o.put("data",new org.json.JSONObject((java.util.Map)data));arr.put(o);}catch(Exception e){}}
+      sendJs("isl-posts",arr.toString());});
+    if(checkinsReg==null)checkinsReg=db.collection("checkins").whereGreaterThan("expiresAt",System.currentTimeMillis()-CHECKIN_MS).addSnapshotListener((snap,err)->{
+      if(err!=null){sendJs("isl-community-error",errJson(err));return;}
+      org.json.JSONArray arr=new org.json.JSONArray();
+      for(DocumentSnapshot d:snap.getDocuments()){try{org.json.JSONObject o=new org.json.JSONObject();o.put("uid",d.getId());
+        for(String k:new String[]{"name","photo","parkKey","parkName","city","uf"})o.put(k,d.getString(k)==null?"":d.getString(k));
+        o.put("expiresAt",ms(d.get("expiresAt")));o.put("at",ms(d.get("at")));arr.put(o);}catch(Exception e){}}
+      sendJs("isl-checkins",arr.toString());});
+  }
+  private void addPost(FirebaseUser u,String type,String text,java.util.Map<String,Object> data){
+    java.util.Map<String,Object> m=new java.util.HashMap<>();m.put("uid",u.getUid());m.put("name",u.getDisplayName()==null?"Patinador ISL":u.getDisplayName());
+    m.put("photo",u.getPhotoUrl()==null?"":u.getPhotoUrl().toString());m.put("type",type);m.put("text",text.length()>500?text.substring(0,500):text);
+    m.put("data",data);m.put("createdAt",FieldValue.serverTimestamp());
+    FirebaseFirestore.getInstance().collection("posts").add(m).addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"post\"}")).addOnFailureListener(e->sendJs("isl-community-error",errJson(e)));
+  }
+  public class CommunityBridge{
+    @JavascriptInterface public void start(){runOnUiThread(()->startCommunity());}
+    @JavascriptInterface public void stop(){runOnUiThread(()->stopCommunity());}
+    @JavascriptInterface public void post(String json){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
+      try{org.json.JSONObject o=new org.json.JSONObject(json);String text=o.optString("text","").trim();if(text.isEmpty())return;addPost(u,o.optString("type","text"),text,jsonToMap(o.optJSONObject("data")));}catch(Exception e){sendJs("isl-community-error",errJson(e));}}
+    @JavascriptInterface public void deletePost(String id){FirebaseFirestore.getInstance().collection("posts").document(id).delete().addOnFailureListener(e->sendJs("isl-community-error",errJson(e)));}
+    @JavascriptInterface public void checkIn(String json){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
+      try{org.json.JSONObject o=new org.json.JSONObject(json);java.util.Map<String,Object> m=new java.util.HashMap<>();
+        m.put("name",u.getDisplayName()==null?"Patinador ISL":u.getDisplayName());m.put("photo",u.getPhotoUrl()==null?"":u.getPhotoUrl().toString());
+        for(String k:new String[]{"parkKey","parkName","city","uf"})m.put(k,o.optString(k,""));
+        m.put("at",FieldValue.serverTimestamp());m.put("expiresAt",System.currentTimeMillis()+CHECKIN_MS);
+        FirebaseFirestore.getInstance().collection("checkins").document(u.getUid()).set(m)
+          .addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"checkin\"}")).addOnFailureListener(e->sendJs("isl-community-error",errJson(e)));
+        if(o.optBoolean("share",true)){java.util.Map<String,Object> d=new java.util.HashMap<>();d.put("parkKey",o.optString("parkKey",""));d.put("parkName",o.optString("parkName",""));
+          addPost(u,"checkin","Estou na pista "+o.optString("parkName","")+" ("+o.optString("city","")+" · "+o.optString("uf","")+")",d);}
+      }catch(Exception e){sendJs("isl-community-error",errJson(e));}}
+    @JavascriptInterface public void checkOut(){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null)return;
+      FirebaseFirestore.getInstance().collection("checkins").document(u.getUid()).delete().addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"checkout\"}"));}
+  }
   public class AccountBridge {
     @JavascriptInterface public void signIn(){runOnUiThread(()->startActivityForResult(googleClient.getSignInIntent(),GOOGLE_LOGIN));}
-    @JavascriptInterface public void signOut(){firebaseAuth.signOut();googleClient.signOut();sendAuthState();}
+    @JavascriptInterface public void signOut(){runOnUiThread(()->stopCommunity());firebaseAuth.signOut();googleClient.signOut();sendAuthState();}
     @JavascriptInterface public void getAccount(){sendAuthState();}
     // Salva apelido, cidade e bio do patinador no perfil da nuvem.
     @JavascriptInterface public void saveProfile(String json){
@@ -125,7 +179,7 @@ public class MainActivity extends Activity {
       if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets i=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());l=i.left;t=i.top;r=i.right;b=i.bottom;}
       else{l=insets.getSystemWindowInsetLeft();t=insets.getSystemWindowInsetTop();r=insets.getSystemWindowInsetRight();b=insets.getSystemWindowInsetBottom();}
       v.setPadding(l,t,r,b);return insets;});
-    web.addJavascriptInterface(new AccountBridge(),"ISLAccount");
+    web.addJavascriptInterface(new AccountBridge(),"ISLAccount");web.addJavascriptInterface(new CommunityBridge(),"ISLCommunity");
     web.addJavascriptInterface(new MapsBridge(),"ISLMaps");web.addJavascriptInterface(new LinksBridge(),"ISLLinks");
     WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
     s.setAllowFileAccess(true);s.setMediaPlaybackRequiresUserGesture(false);
