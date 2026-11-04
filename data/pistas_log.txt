@@ -1,2 +1,2 @@
 elementos: 1644
-pistas: 1624 sem nome: 1177
+pistas: 1624 sem nome: 1177 commons: 0 mapillary: 0
