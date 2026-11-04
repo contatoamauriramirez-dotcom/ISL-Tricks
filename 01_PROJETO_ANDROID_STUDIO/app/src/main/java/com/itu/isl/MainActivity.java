@@ -133,7 +133,11 @@ public class MainActivity extends Activity {
     web.setWebChromeClient(new WebChromeClient(){
       @Override public boolean onShowFileChooser(WebView view, ValueCallback<android.net.Uri[]> callback, FileChooserParams params){
         if(pending!=null)pending.onReceiveValue(null);pending=callback;
-        try{Intent intent=new Intent(Intent.ACTION_GET_CONTENT);intent.setType("video/*");intent.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(Intent.createChooser(intent,"Selecionar vídeo da manobra"),PICK_VIDEO);return true;}
+        try{
+          boolean image=false;String[] types=params==null?null:params.getAcceptTypes();
+          if(types!=null)for(String t:types)if(t!=null&&t.startsWith("image"))image=true;
+          Intent intent=new Intent(Intent.ACTION_GET_CONTENT);intent.setType(image?"image/*":"video/*");intent.addCategory(Intent.CATEGORY_OPENABLE);
+          startActivityForResult(Intent.createChooser(intent,image?"Selecionar foto":"Selecionar vídeo da manobra"),PICK_VIDEO);return true;}
         catch(Exception ex){pending=null;return false;}
       }
     });
