@@ -617,7 +617,9 @@ const LEVEL_MODS=[[/\balley-?oop\b/i,1],[/\bzero spin\b/i,1],[/\bhalf cab\b/i,1]
 const LEVEL_OVERRIDES={/* Iniciais: as manobras de base, primeiras a aprender */'Grinds-Soul':'Iniciais','Grinds-Makio':'Iniciais','Grinds-Pornstar':'Iniciais','Grinds-Mizou':'Iniciais','Grinds-Backside':'Iniciais','Grinds-Frontside':'Iniciais'};
 function trickScore(t){let s=FAMILY_BASE[t.cat]??2;for(const [re,v] of LEVEL_MODS)if(re.test(t.name))s+=v;return s}
 function scoreToLevel(s){return s<=2?'Iniciante':s===3?'Intermediário':s<=4?'Avançado':'Expert'}
-tricks.forEach(t=>{t.score=trickScore(t);t.level=LEVEL_OVERRIDES[t.id]||scoreToLevel(t.score)});
+// Regras por variação definidas pela ISL (valem antes da pontuação).
+const LEVEL_RULES=[[/\bfull cab\b/i,'Expert']];
+tricks.forEach(t=>{t.score=trickScore(t);const rule=LEVEL_RULES.find(([re])=>re.test(t.name));t.level=LEVEL_OVERRIDES[t.id]||(rule&&rule[1])||scoreToLevel(t.score)});
 const levelRank=l=>{const i=LEVELS.indexOf(l);return i<0?99:i};
 const levelBadge=l=>`<span class="lvl lvl-${levelRank(l)+1}">${esc(l)}</span>`;
 let levelFilter='Todos',grindMode='Manobras';
