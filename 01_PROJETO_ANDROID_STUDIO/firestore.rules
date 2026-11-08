@@ -5,14 +5,16 @@ service cloud.firestore {
    allow read, write: if request.auth != null && request.auth.uid == userId;
   }
   // Comunidade: só quem está logado lê; cada um escreve só o que é seu.
+  // Só conquistas geradas pelo app (sem texto livre nem imagens).
   match /posts/{postId} {
    allow read: if request.auth != null;
    allow create: if request.auth != null
      && request.resource.data.uid == request.auth.uid
      && request.resource.data.text is string
      && request.resource.data.text.size() > 0
-     && request.resource.data.text.size() <= 500
-     && request.resource.data.type in ['text','checkin','trick','challenge','combo','robot','event'];
+     && request.resource.data.text.size() <= 200
+     && request.resource.data.type in ['checkin','trick','challenge','combo','robot','event']
+     && request.resource.data.text.matches('^(Acertei|Concluí|Fiz um combo|Venci o robô|O robô me venceu|Estou na pista|Tô dentro|Já aprendi|Já venci|Meu recorde|Tenho)[ :].*');
    allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
    allow update: if false;
   }
@@ -21,7 +23,8 @@ service cloud.firestore {
    allow read: if request.auth != null;
    allow create, update: if request.auth != null
      && request.resource.data.uid == request.auth.uid
-     && docId == request.resource.data.eventKey + '__' + request.auth.uid;
+     && docId == request.resource.data.eventKey + '__' + request.auth.uid
+     && (!('title' in request.resource.data) || request.resource.data.title.size() <= 120);
    allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
   }
   // Perfil público: quem está logado vê; cada um escreve só o seu.

@@ -672,7 +672,7 @@ function scoreToLevel(s){return s<=2?'Iniciante':s===3?'Intermediário':s<=4?'Av
 const TRICK_NAMES={'Grinds-Backside':'Backside','Grinds-Frontside':'Frontside'};
 tricks.forEach(t=>{if(TRICK_NAMES[t.id])t.name=TRICK_NAMES[t.id]});
 // Regras por variação definidas pela ISL (valem antes da pontuação).
-const LEVEL_RULES=[[/\bfull cab\b/i,'Expert'],[/\b450\b/,'Expert'],[/\ball-cab\b/i,'Avançado'],[/\bhalf cab\b/i,'Intermediário'],[/^fakie (?!270)/i,'Intermediário'],[/\balley-?oop\b/i,'Avançado'],[/\btruespin\b/i,'Avançado'],[/\b180 out\b/i,'Intermediário'],[/\b360 out\b/i,'Avançado'],[/\bzero spin\b/i,'Intermediário'],[/\breverse out\b/i,'Intermediário'],[/^topside [a-z-]+( torque)?$/i,'Intermediário']];
+const LEVEL_RULES=[[/\bcitric acid\b/i,'Expert'],[/\bfull cab\b/i,'Expert'],[/\b450\b/,'Expert'],[/\ball-cab\b/i,'Avançado'],[/\bhalf cab\b/i,'Intermediário'],[/^fakie (?!270)/i,'Intermediário'],[/\balley-?oop\b/i,'Avançado'],[/\btruespin\b/i,'Avançado'],[/\b180 out\b/i,'Intermediário'],[/\b360 out\b/i,'Avançado'],[/\bzero spin\b/i,'Intermediário'],[/\breverse out\b/i,'Intermediário'],[/^topside [a-z-]+( torque)?$/i,'Intermediário']];
 tricks.forEach(t=>{t.score=trickScore(t);const rule=LEVEL_RULES.find(([re])=>re.test(t.name));t.level=LEVEL_OVERRIDES[t.id]||(rule&&rule[1])||scoreToLevel(t.score)});
 const levelRank=l=>{const i=LEVELS.indexOf(l);return i<0?99:i};
 /* --- Manobras personalizadas: criadas pelo patinador, com o nível que ele escolher (salvas neste aparelho) --- */
@@ -1153,10 +1153,10 @@ function toastAction(){const a=comToast&&comToast.action;hideToast();if(a)a()}
 
 /* --- compartilhar --- */
 function comNeedLogin(){showToast('Entre com Google para usar a comunidade.','Entrar',()=>{hubTab('Perfil')})}
-function comShare(type,text,data={}){if(!hasCommunity()){showToast('A comunidade funciona no aplicativo Android.');return}if(!islAccount){comNeedLogin();return}
+function comShare(type,text,data={}){if(type==='text'||!COM_TYPES[type])return;if(!hasCommunity()){showToast('A comunidade funciona no aplicativo Android.');return}if(!islAccount){comNeedLogin();return}
  try{window.ISLCommunity.post(JSON.stringify({type,text,data}))}catch(e){showToast('Não foi possível compartilhar agora.')}}
 function offerShare(type,text,data){showToast(text,'Compartilhar',()=>comShare(type,text,data))}
-function comPostText(){const el=document.getElementById('comText');const t=(el&&el.value||'').trim();if(!t){showToast('Escreva algo para compartilhar.');return}comShare('text',t);el.value=''}
+function comPostText(){}
 function comDelete(id){if(!confirm('Apagar este post?'))return;try{window.ISLCommunity.deletePost(id)}catch(e){}}
 
 /* --- check-in nas pistas --- */
@@ -1175,11 +1175,18 @@ function timeAgo(ms){const s=Math.max(1,Math.round((Date.now()-ms)/1000));if(s<6
 function comAvatar(name,photo,cls='com-av'){return photo?`<img class="${cls}" src="${hubText(photo)}" alt="" referrerpolicy="no-referrer">`:`<span class="${cls} ini">${hubText((name||'?').trim().charAt(0).toUpperCase())}</span>`}
 function comLoginCard(){return `<div class="hub-card acc-card"><h3>Participe da comunidade</h3><p class="hub-mini">Entre com a sua conta Google para ver quem está nas pistas agora, fazer check-in e compartilhar a sua evolução.</p><button class="g-btn" onclick="islSignIn()" ${islAuthBusy?'disabled':''}>${G_LOGO}<span>${islAuthBusy?'Abrindo o Google…':'Entrar com Google'}</span></button>${islAuthMsg?`<p class="acc-msg">${hubText(islAuthMsg)}</p>`:''}</div>`}
 function comTabs(){return `<div class="grind-mode com-tabs">${[['feed','Feed'],['pistas','Na pista agora'],['eventos','Eventos']].map(([m,l])=>`<button class="${comMode===m?'on':''}" onclick="comMode='${m}';render();window.scrollTo(0,0)">${l}</button>`).join('')}</div>`}
+function comAchievements(){const out=[];const n=tricks.filter(t=>!t.custom&&state(t.id)!=='Ainda não').length;let lvl='',pts=0;try{lvl=suggestedLevel();pts=challengePoints()}catch(e){}
+ if(n)out.push(['trick',`Já aprendi ${n} ${n===1?'manobra':'manobras'} no ISL BLADE${lvl?` (nível ${lvl})`:''}!`,'Minhas manobras']);
+ const sw=tricks.filter(t=>!t.custom&&switchPoints(t.id)).length;if(sw)out.push(['trick',`Já aprendi ${sw} ${sw===1?'manobra':'manobras'} de switch no ISL BLADE!`,'Switch']);
+ if(games.comboBest)out.push(['combo',`Meu recorde no Combo: ${games.comboBest} ${games.comboBest===1?'manobra':'manobras'} em sequência!`,'Recorde no Combo']);
+ if(games.robotWins)out.push(['robot',`Já venci o robô ${games.robotWins} ${games.robotWins===1?'vez':'vezes'} no B.L.A.D.E.!`,'Vitórias contra o robô']);
+ if(pts)out.push(['challenge',`Tenho ${pts} pontos nos desafios da semana do ISL BLADE!`,'Pontos em desafios']);
+ return out}
 function comFeed(){
- const quick=[['trick','Acertei uma manobra nova!'],['challenge','Concluí um desafio da semana!'],['combo',`Meu recorde no Combo: ${games.comboBest||0} manobras em sequência!`]];
- return `<div class="hub-card com-compose"><div class="com-row">${comAvatar(islAccount.name,islAccount.photo)}<textarea id="comText" class="hub-field" rows="2" maxlength="500" placeholder="Conte a sua evolução para a galera…"></textarea></div><button class="hub-cta" onclick="comPostText()">Publicar</button>
- <div class="com-quick">${quick.map(([t,x])=>`<button data-t="${t}" data-x="${hubText(x)}" onclick="comShare(this.dataset.t,this.dataset.x)">${COM_TYPES[t][0]} ${hubText(COM_TYPES[t][1])}</button>`).join('')}</div></div>
- ${comPosts.length?comPosts.map(p=>{const ty=COM_TYPES[p.type]||COM_TYPES.text;const mine=p.uid===islAccount.uid;
+ const ach=comAchievements();
+ return `<div class="hub-card com-compose"><h3>Compartilhe uma conquista</h3><p class="hub-mini">Na comunidade só entram conquistas geradas pelo app: manobras aprendidas, desafios, recordes, check-in nas pistas e eventos. Não dá para publicar texto livre nem imagens, para manter a comunidade segura.</p>
+ ${ach.length?`<div class="com-quick">${ach.map(([t,x,l])=>`<button data-t="${t}" data-x="${hubText(x)}" onclick="comShare(this.dataset.t,this.dataset.x)">${COM_TYPES[t][0]} ${hubText(l)}</button>`).join('')}</div>`:`<p class="hub-mini"><b>Marque as manobras que você já sabe</b> ou jogue um modo de Jogos para liberar as suas conquistas.</p>`}</div>
+ ${comPosts.filter(p=>p.type!=='text').length?comPosts.filter(p=>p.type!=='text').map(p=>{const ty=COM_TYPES[p.type]||COM_TYPES.text;const mine=p.uid===islAccount.uid;
   return `<article class="com-post"><div class="com-row">${comUserBtn(p.uid,`${comAvatar(p.name,p.photo)}<span class="com-who"><b>${hubText(p.name)}</b><small>${timeAgo(p.createdAt)}</small></span>`)}<span class="com-type t-${hubText(p.type)}">${ty[0]} ${hubText(ty[1])}</span></div><p>${hubText(p.text)}</p>${mine?`<button class="com-del" data-id="${hubText(p.id)}" onclick="comDelete(this.dataset.id)">Apagar</button>`:''}</article>`}).join(''):`<div class="hub-empty"><b>Ainda não há posts.</b><p>Seja o primeiro a compartilhar a sua evolução.</p></div>`}`}
 function comLive(){const act=activeCheckins();const mine=myCheckin();const byPark={};act.forEach(c=>{(byPark[c.parkKey]=byPark[c.parkKey]||{name:c.parkName,city:c.city,uf:c.uf,people:[]}).people.push(c)});
  const parks=Object.entries(byPark).sort((a,b)=>b[1].people.length-a[1].people.length);
@@ -1196,8 +1203,8 @@ function renderCommunity(){
  root.innerHTML=head+(comError?`<p class="acc-msg com-err">${hubText(comError)}</p>`:'')+(comMode==='pistas'?comLive():comFeed())}
 
 /* --- convites para compartilhar quando a pessoa evolui --- */
-{const _tv=toggleVariation;toggleVariation=function(id,checked){_tv(id,checked);if(checked){const t=tricks.find(x=>x.id===id);if(t)offerShare('trick',`Acertei ${t.name}! (${t.level})`,{trickId:id,level:t.level})}}}
-{const _ts=toggleSwitch;toggleSwitch=function(id,checked){_ts(id,checked);if(checked){const t=tricks.find(x=>x.id===id);if(t)offerShare('trick',`Acertei ${t.name} de switch!`,{trickId:id,switch:true})}}}
+{const _tv=toggleVariation;toggleVariation=function(id,checked){_tv(id,checked);if(checked){const t=tricks.find(x=>x.id===id);if(t)offerShare('trick',`Acertei ${t.custom?'uma manobra personalizada':t.name}! (${t.level})`,{trickId:id,level:t.level})}}}
+{const _ts=toggleSwitch;toggleSwitch=function(id,checked){_ts(id,checked);if(checked){const t=tricks.find(x=>x.id===id);if(t)offerShare('trick',`Acertei ${t.custom?'uma manobra personalizada':t.name} de switch!`,{trickId:id,switch:true})}}}
 {const _tc=toggleChallenge;toggleChallenge=function(id,checked){_tc(id,checked);if(checked){const lv=id.split('|')[1];const c=(weeklyChallenges(lv)||[]).find(x=>x.id===id);if(c)offerShare('challenge',`Concluí o desafio da semana (${lv}): ${c.tag} — ${c.trick.name}! +${c.points} pts`,{level:lv,points:c.points})}}}
 function shareCombo(){comShare('combo',`Fiz um combo de ${combo.best} ${combo.best===1?'manobra':'manobras'} em sequência no ISL BLADE! Recorde: ${games.comboBest||0}.`,{best:combo.best,record:games.comboBest||0})}
 function shareRobot(){const r=robot.winner==='voce'?`Venci o robô no B.L.A.D.E. (nível ${robot.level})! Placar de letras: eu ${'BLADE'.slice(0,robot.letters)||'0'} × robô BLADE.`:robot.winner==='robo'?`O robô me venceu no B.L.A.D.E. (nível ${robot.level}), mas acertei ${robot.landed} ${robot.landed===1?'manobra':'manobras'}, ${robot.firsts} de primeira!`:`Acertei ${robot.landed} ${robot.landed===1?'manobra':'manobras'} no B.L.A.D.E. contra o robô (nível ${robot.level})!`;comShare('robot',r,{landed:robot.landed,level:robot.level,win:robot.winner==='voce'})}
@@ -1213,8 +1220,9 @@ function wentPeople(key){return comWent.filter(w=>w.eventKey===key)}
 function iWent(key){return hub.went.includes(key)}
 function toggleWent(key,title){
  const on=!iWent(key);hub.went=on?[...hub.went,key]:hub.went.filter(k=>k!==key);hubSave();
+ const pubEv=!String(key).startsWith('u');if(!pubEv)title='Evento da galera';
  if(hasCommunity()&&islAccount){try{on?window.ISLCommunity.markWent(JSON.stringify({eventKey:key,title,share:false})):window.ISLCommunity.unmarkWent(key)}catch(e){}}
- if(on)offerShare('event',`Tô dentro: ${title}!`,{eventKey:key});
+ if(on&&pubEv)offerShare('event',`Tô dentro: ${title}!`,{eventKey:key});
  render()}
 function wentBlock(key,title,big=false){const ppl=wentPeople(key);const n=Math.max(ppl.length,iWent(key)&&!ppl.some(p=>islAccount&&p.uid===islAccount.uid)?ppl.length+1:ppl.length);const on=iWent(key);
  return `<div class="went ${big?'big':''}"><span role="button" tabindex="0" class="went-btn ${on?'on':''}" data-k="${hubText(key)}" data-t="${hubText(title)}" onclick="event.stopPropagation();toggleWent(this.dataset.k,this.dataset.t)" onkeydown="if(event.key==='Enter'){event.stopPropagation();toggleWent(this.dataset.k,this.dataset.t)}">${on?'✓ Tô dentro':'🙌 Tô dentro'}</span>${n?`<span class="went-count"><span class="com-faces">${ppl.slice(0,5).map(p=>comAvatar(p.name,p.photo,'com-face')).join('')}</span>${n} ${n===1?'pessoa tá dentro':'pessoas tão dentro'}</span>`:`<span class="went-count muted">Seja o primeiro a marcar</span>`}</div>`}
@@ -1223,9 +1231,9 @@ function renderHubProfile(){root.innerHTML=`<h1 class="hub-title">Perfil</h1>${a
 /* ===== Perfil público dos patinadores: toque na foto de quem publicou ===== */
 let comProfileUid=null,comProfileBack='feed',comProfiles={};
 function publicProfileData(){const learned={};LEVELS.forEach(l=>learned[l]=[]);const sw=[];let n=0;
- tricks.forEach(t=>{if(state(t.id)!=='Ainda não'){n++;if(learned[t.level]&&learned[t.level].length<400)learned[t.level].push(t.name)}if(switchPoints(t.id)&&sw.length<400)sw.push(t.name)});
+ tricks.forEach(t=>{if(t.custom)return;if(state(t.id)!=='Ainda não'){n++;if(learned[t.level]&&learned[t.level].length<400)learned[t.level].push(t.name)}if(switchPoints(t.id)&&sw.length<400)sw.push(t.name)});
  let pts=0,lvl='';try{pts=challengePoints();lvl=suggestedLevel()}catch(e){}
- return {nickname:hub.profile.name||'',city:hub.profile.city||'',bio:hub.profile.bio||'',learned,switchTricks:sw,learnedCount:n,switchCount:sw.length,totalTricks:tricks.length,comboBest:games.comboBest||0,robotWins:games.robotWins||0,challengePoints:pts,level:lvl}}
+ return {learned,switchTricks:sw,learnedCount:n,switchCount:sw.length,totalTricks:tricks.filter(t=>!t.custom).length,comboBest:games.comboBest||0,robotWins:games.robotWins||0,challengePoints:pts,level:lvl}}
 let pubTimer=null,pubLast='';
 function publishProfile(now){if(!islAccount)return;let ok=false;try{ok=!!(window.ISLAccount&&window.ISLAccount.publishProfile)}catch(e){}if(!ok)return;
  clearTimeout(pubTimer);pubTimer=setTimeout(()=>{try{const j=JSON.stringify(publicProfileData());if(j===pubLast)return;pubLast=j;window.ISLAccount.publishProfile(j)}catch(e){}},now?400:4000)}
@@ -1241,9 +1249,9 @@ function openProfile(uid){if(!uid)return;if(comMode!=='perfil')comProfileBack=co
 function closeProfile(){comMode=comProfileBack||'feed';comProfileUid=null;render();window.scrollTo(0,0)}
 function comUserBtn(uid,inner,cls='com-user'){return uid?`<button class="${cls}" data-uid="${hubText(uid)}" onclick="openProfile(this.dataset.uid)" aria-label="Ver perfil">${inner}</button>`:inner}
 function comProfileView(){const uid=comProfileUid,me=islAccount&&islAccount.uid===uid;
- const posts=comPosts.filter(p=>p.uid===uid),went=comWent.filter(w=>w.uid===uid),chk=activeCheckins().find(c=>c.uid===uid);
+ const posts=comPosts.filter(p=>p.uid===uid&&p.type!=='text'),went=comWent.filter(w=>w.uid===uid),chk=activeCheckins().find(c=>c.uid===uid);
  const who=posts[0]||went[0]||chk||{};const name=me?(islAccount.name||'Você'):(who.name||'Patinador ISL'),photo=me?islAccount.photo:who.photo;
- const c=comProfiles[uid];const pr=me?publicProfileData():(c&&c.exists?c.profile:null);
+ const c=comProfiles[uid];const pr0=me?publicProfileData():(c&&c.exists?c.profile:null);const pr=pr0?{...pr0,nickname:'',city:'',bio:''}:null;
  const back=`<button class="back" onclick="closeProfile()">← Comunidade</button>`;
  const head=`<div class="hub-card prof-head">${comAvatar(name,photo,'prof-av')}<div class="prof-who"><h1 class="hub-title prof-name">${hubText(pr&&pr.nickname||name)}</h1>${pr&&pr.nickname&&pr.nickname!==name?`<small>${hubText(name)}</small>`:''}${pr&&pr.city?`<p class="hub-mini">⌖ ${hubText(pr.city)}</p>`:''}${pr&&pr.level?`<div class="prof-lvl">Nível ${levelBadge(pr.level)}</div>`:''}</div>${pr&&pr.bio?`<p class="prof-bio">${hubText(pr.bio)}</p>`:''}${me?`<p class="hub-mini prof-me">Este é o seu perfil, do jeito que a galera vê.</p>`:''}</div>`;
  let body='';

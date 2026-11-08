@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void start(){runOnUiThread(()->startCommunity());}
     @JavascriptInterface public void stop(){runOnUiThread(()->stopCommunity());}
     @JavascriptInterface public void post(String json){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
-      try{org.json.JSONObject o=new org.json.JSONObject(json);String text=o.optString("text","").trim();if(text.isEmpty())return;addPost(u,o.optString("type","text"),text,jsonToMap(o.optJSONObject("data")));}catch(Exception e){sendJs("isl-community-error",errJson(e));}}
+      try{org.json.JSONObject o=new org.json.JSONObject(json);String text=o.optString("text","").trim();String type=o.optString("type","");if(text.isEmpty()||!java.util.Arrays.asList("trick","challenge","combo","robot").contains(type))return;if(text.length()>200)text=text.substring(0,200);addPost(u,type,text,jsonToMap(o.optJSONObject("data")));}catch(Exception e){sendJs("isl-community-error",errJson(e));}}
     @JavascriptInterface public void deletePost(String id){FirebaseFirestore.getInstance().collection("posts").document(id).delete().addOnFailureListener(e->sendJs("isl-community-error",errJson(e)));}
     @JavascriptInterface public void checkIn(String json){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-community-error","{\"code\":\"auth\"}");return;}
       try{org.json.JSONObject o=new org.json.JSONObject(json);java.util.Map<String,Object> m=new java.util.HashMap<>();
