@@ -905,13 +905,29 @@ function renderRobot(){
  <button class="ts-quit" onclick="robotEnd(null);render()">Encerrar partida</button>`}
 
 /* --- Combo: a sequência cresce; errou 3 vezes, volta para o início da mesma sequência --- */
-function comboLevel(start,pos){return LEVELS[Math.min(LEVELS.length-1,levelRank(start)+Math.floor(pos/3))]}
-function comboStart(level){combo={start:level,seq:[pickTrick(level)],idx:0,tries:GAME_TRIES,run:0,best:0,restarts:0,over:false};gameMsg='';render()}
+// Combo em dois modos:
+//  'escalar' — passa por TODAS as manobras de um nível antes de subir para o próximo.
+//  'travado' — fica num nível só, com cada manobra de base e de switch; fez todas, zerou o nível.
+let comboMode='escalar';
+if(!games.comboCleared||typeof games.comboCleared!=='object')games.comboCleared={};
+function cT(key){const sw=String(key).endsWith('|sw');const t=gameTrick(sw?key.slice(0,-3):key);return sw?{...t,name:t.name+' · Switch',sw:true}:t}
+function comboPool(lv){const base=tricks.filter(t=>t.level===lv).map(t=>t.id);return combo&&combo.mode==='travado'?[...base,...base.map(id=>id+'|sw')]:base}
+function comboLevel(start){return combo&&combo.seq.length?cT(combo.seq[combo.seq.length-1]).level:start}
+function comboNext(){const pick=a=>a[Math.floor(Math.random()*a.length)];
+ if(combo.mode==='travado'){const pool=comboPool(combo.start).filter(k=>!combo.seq.includes(k));return pool.length?pick(pool):null}
+ for(let r=levelRank(cT(combo.seq[combo.seq.length-1]).level);r<LEVELS.length;r++){const pool=comboPool(LEVELS[r]).filter(k=>!combo.seq.includes(k));if(pool.length)return pick(pool)}
+ return null}
+function comboLevelInfo(lv){const all=comboPool(lv).length;const done=combo.seq.filter(k=>cT(k).level===lv).length;return `${done} de ${all}`}
+function setComboMode(m){comboMode=m;render()}
+function comboStart(level){combo={start:level,mode:comboMode,seq:[],idx:0,tries:GAME_TRIES,run:0,best:0,restarts:0,over:false};
+ const pool=comboPool(level);combo.seq.push(pool[Math.floor(Math.random()*pool.length)]);gameMsg='';render();window.scrollTo(0,0)}
 function comboHit(){if(!combo||combo.over)return;combo.idx++;combo.run=combo.idx;
  if(combo.run>combo.best)combo.best=combo.run;
  if(combo.best>games.comboBest){games.comboBest=combo.best;gamesSave()}
- if(combo.idx>=combo.seq.length){const lv=comboLevel(combo.start,combo.seq.length);const nx=pickTrick(lv,combo.seq);combo.seq.push(nx);
-  gameMsg=`Combo de ${combo.seq.length-1}! Nova manobra: <b>${esc(gameTrick(nx).name)}</b>${lv!==gameTrick(combo.seq[combo.seq.length-2]).level?` · subiu para ${esc(lv)}`:''}.`}
+ if(combo.idx>=combo.seq.length){const prev=cT(combo.seq[combo.seq.length-1]).level;const nx=comboNext();
+  if(!nx){combo.over=true;combo.all=true;if(combo.mode==='travado'){games.comboCleared[combo.start]=new Date().toISOString();gamesSave()}gameMsg='';render();return}
+  combo.seq.push(nx);const lv=cT(nx).level;
+  gameMsg=`Combo de ${combo.seq.length-1}! Nova manobra: <b>${esc(cT(nx).name)}</b>${lv!==prev?` · você passou por todas as ${esc(prev)} e subiu para <b>${esc(lv)}</b>`:` · ${esc(lv)} ${comboLevelInfo(lv)}`}.`}
  else gameMsg='Acertou! Próxima da sequência.';
  combo.tries=GAME_TRIES;render()}
 function comboMiss(){if(!combo||combo.over)return;combo.tries--;
@@ -919,13 +935,21 @@ function comboMiss(){if(!combo||combo.over)return;combo.tries--;
  else{combo.idx=0;combo.run=0;combo.tries=GAME_TRIES;combo.restarts++;gameMsg='Errou 3 vezes. Volta para o início da mesma sequência.'}
  render()}
 function renderCombo(){
- if(!combo)return `<div class="game-intro"><p class="hub-mini">O app passa uma manobra. Acertou, ele adiciona outra e a sequência cresce. São ${GAME_TRIES} chances por manobra. Se errar as ${GAME_TRIES}, você volta para o começo da mesma sequência. A cada 3 manobras, o nível sobe.</p><p class="hub-mini">Recorde: <b style="color:var(--text)">${games.comboBest||0}</b> em sequência.</p></div><div class="sec-title" style="margin-top:18px">Começar pelo nível</div>${gameLevelChips('comboStart','')}`;
- if(combo.over)return `<div class="trick-stage over"><div class="ts-name">Fim do combo</div><p class="ts-sum">Maior sequência: <b>${combo.best}</b> ${combo.best===1?'manobra':'manobras'}${combo.best>0&&combo.best>=games.comboBest?' · novo recorde!':''}.<br>Recomeços: ${combo.restarts}.</p>${combo.best>0?`<button class="hub-cta" onclick="shareCombo()">🔥 Compartilhar na comunidade</button>`:''}</div>
-  <div class="game-actions"><button class="game-btn hit" onclick="comboStart('${combo.start}')">Jogar de novo</button><button class="game-btn miss" onclick="combo=null;render()">Trocar nível</button></div>`;
- const t=gameTrick(combo.seq[combo.idx]);
- const seq=`<div class="combo-seq">${combo.seq.map((id,i)=>`<span class="${i<combo.idx?'done':i===combo.idx?'now':''}">${i+1}. ${esc(gameTrick(id).name)}</span>`).join('')}</div>`;
+ if(!combo){const lock=comboMode==='travado';
+  return `<div class="grind-mode combo-mode" role="group" aria-label="Modo do combo">${[['escalar','Escalar níveis'],['travado','Travado no nível']].map(([m,l])=>`<button class="${comboMode===m?'on':''}" onclick="setComboMode('${m}')">${l}</button>`).join('')}</div>
+  <div class="game-intro"><p class="hub-mini">O app passa uma manobra. Acertou, ele adiciona outra e a sequência cresce. São ${GAME_TRIES} chances por manobra. Se errar as ${GAME_TRIES}, você volta para o começo da mesma sequência.</p>
+  <p class="hub-mini">${lock?'<b style="color:var(--text)">Travado no nível:</b> o combo fica só no nível escolhido, com todas as manobras de base e todas de switch. Fez todas, você <b style="color:var(--text)">zera o nível</b>.':'<b style="color:var(--text)">Escalar níveis:</b> o jogo passa por todas as manobras do nível antes de subir para o próximo (Iniciais → Iniciante → Intermediário → Avançado → Expert).'}</p>
+  <p class="hub-mini">Recorde: <b style="color:var(--text)">${games.comboBest||0}</b> em sequência.</p></div>
+  <div class="sec-title" style="margin-top:18px">${lock?'Escolha o nível':'Começar pelo nível'}</div>${gameLevelChips('comboStart','')}
+  ${lock?`<div class="list-group" style="margin-top:14px">${LEVELS.map(l=>{const n=tricks.filter(t=>t.level===l).length;return `<div class="list-row" style="cursor:default"><span class="grow">${esc(l)}<small>${n} de base + ${n} de switch = ${n*2} manobras</small></span><span class="hub-mini">${games.comboCleared[l]?'✅ zerado':'—'}</span></div>`}).join('')}</div>`:''}`}
+ if(combo.over){const lock=combo.mode==='travado';
+  return `<div class="trick-stage over">${lock?`<div class="ts-top">${levelBadge(combo.start)}</div>`:''}<div class="ts-name">${combo.all?(lock?`Você zerou o nível ${esc(combo.start)}!`:'Você fez todas!'):'Fim do combo'}</div><p class="ts-sum">Maior sequência: <b>${combo.best}</b> ${combo.best===1?'manobra':'manobras'}${combo.best>0&&combo.best>=games.comboBest?' · novo recorde!':'.'}<br>Recomeços: ${combo.restarts}.</p>${combo.best>0?`<button class="hub-cta" onclick="shareCombo()">🔥 Compartilhar na comunidade</button>`:''}</div>
+  <div class="game-actions"><button class="game-btn hit" data-l="${esc(combo.start)}" onclick="comboMode='${combo.mode}';comboStart(this.dataset.l)">Jogar de novo</button><button class="game-btn miss" onclick="combo=null;render()">Trocar nível</button></div>`}
+ const t=cT(combo.seq[combo.idx]);
+ const seq=`<div class="combo-seq">${combo.seq.map((k,i)=>`<span class="${i<combo.idx?'done':i===combo.idx?'now':''}">${i+1}. ${esc(cT(k).name)}</span>`).join('')}</div>`;
+ const pos=combo.mode==='travado'?`${esc(combo.start)} travado: ${comboLevelInfo(combo.start)} para zerar`:`${esc(t.level)}: ${comboLevelInfo(t.level)} no combo`;
  return `<div class="game-stats"><div><b>${combo.run}</b><span>em sequência</span></div><div><b>${combo.seq.length}</b><span>tamanho do combo</span></div><div><b>${Math.max(combo.best,games.comboBest||0)}</b><span>recorde</span></div></div>
- ${seq}${gameMsg?`<p class="game-msg">${gameMsg}</p>`:''}${trickStage(t,combo.tries,`<div class="ts-pos">Manobra ${combo.idx+1} de ${combo.seq.length}</div>`)}${gameActions('comboHit','comboMiss')}
+ ${seq}${gameMsg?`<p class="game-msg">${gameMsg}</p>`:''}${trickStage(t,combo.tries,`<div class="ts-pos">Manobra ${combo.idx+1} de ${combo.seq.length} · ${pos}</div>`)}${gameActions('comboHit','comboMiss')}
  <button class="ts-quit" onclick="combo.over=true;render()">Encerrar combo</button>`}
 
 /* --- Aba Jogos --- */
@@ -1206,7 +1230,7 @@ function renderCommunity(){
 {const _tv=toggleVariation;toggleVariation=function(id,checked){_tv(id,checked);if(checked){const t=tricks.find(x=>x.id===id);if(t)offerShare('trick',`Acertei ${t.custom?'uma manobra personalizada':t.name}! (${t.level})`,{trickId:id,level:t.level})}}}
 {const _ts=toggleSwitch;toggleSwitch=function(id,checked){_ts(id,checked);if(checked){const t=tricks.find(x=>x.id===id);if(t)offerShare('trick',`Acertei ${t.custom?'uma manobra personalizada':t.name} de switch!`,{trickId:id,switch:true})}}}
 {const _tc=toggleChallenge;toggleChallenge=function(id,checked){_tc(id,checked);if(checked){const lv=id.split('|')[1];const c=(weeklyChallenges(lv)||[]).find(x=>x.id===id);if(c)offerShare('challenge',`Concluí o desafio da semana (${lv}): ${c.tag} — ${c.trick.name}! +${c.points} pts`,{level:lv,points:c.points})}}}
-function shareCombo(){comShare('combo',`Fiz um combo de ${combo.best} ${combo.best===1?'manobra':'manobras'} em sequência no ISL BLADE! Recorde: ${games.comboBest||0}.`,{best:combo.best,record:games.comboBest||0})}
+function shareCombo(){comShare('combo',`Fiz um combo de ${combo.best} ${combo.best===1?'manobra':'manobras'} em sequência no ISL BLADE!${combo.all&&combo.mode==='travado'?` Zerei o nível ${combo.start}, base e switch!`:''} Recorde: ${games.comboBest||0}.`,{best:combo.best,record:games.comboBest||0})}
 function shareRobot(){const r=robot.winner==='voce'?`Venci o robô no B.L.A.D.E. (nível ${robot.level})! Placar de letras: eu ${'BLADE'.slice(0,robot.letters)||'0'} × robô BLADE.`:robot.winner==='robo'?`O robô me venceu no B.L.A.D.E. (nível ${robot.level}), mas acertei ${robot.landed} ${robot.landed===1?'manobra':'manobras'}, ${robot.firsts} de primeira!`:`Acertei ${robot.landed} ${robot.landed===1?'manobra':'manobras'} no B.L.A.D.E. contra o robô (nível ${robot.level})!`;comShare('robot',r,{landed:robot.landed,level:robot.level,win:robot.winner==='voce'})}
 
 
