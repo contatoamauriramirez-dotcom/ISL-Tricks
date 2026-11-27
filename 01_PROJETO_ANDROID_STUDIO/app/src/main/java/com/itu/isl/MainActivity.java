@@ -183,8 +183,34 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void checkOut(){FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null)return;
       FirebaseFirestore.getInstance().collection("checkins").document(u.getUid()).delete().addOnSuccessListener(x->sendJs("isl-community-ok","{\"action\":\"checkout\"}"));}
   }
+  private void deleteAccountNow(){
+    final FirebaseUser u=firebaseAuth.getCurrentUser();if(u==null){sendJs("isl-account-deleted","{\"ok\":false,\"reason\":\"auth\"}");return;}
+    final String uid=u.getUid();final FirebaseFirestore db=FirebaseFirestore.getInstance();stopCommunity();
+    final java.util.List<com.google.android.gms.tasks.Task<?>> jobs=new java.util.ArrayList<>();
+    jobs.add(db.collection("posts").whereEqualTo("uid",uid).get().continueWithTask(t->{java.util.List<com.google.android.gms.tasks.Task<Void>> d=new java.util.ArrayList<>();if(t.isSuccessful())for(DocumentSnapshot x:t.getResult().getDocuments())d.add(x.getReference().delete());return com.google.android.gms.tasks.Tasks.whenAll(d);}));
+    jobs.add(db.collection("went").whereEqualTo("uid",uid).get().continueWithTask(t->{java.util.List<com.google.android.gms.tasks.Task<Void>> d=new java.util.ArrayList<>();if(t.isSuccessful())for(DocumentSnapshot x:t.getResult().getDocuments())d.add(x.getReference().delete());return com.google.android.gms.tasks.Tasks.whenAll(d);}));
+    jobs.add(db.collection("checkins").document(uid).delete());
+    jobs.add(db.collection("profiles").document(uid).delete());
+    jobs.add(db.collection("users").document(uid).delete());
+    com.google.android.gms.tasks.Tasks.whenAllComplete(jobs).addOnCompleteListener(all->{
+      // Reautentica com o Google (o Firebase exige login recente) e apaga o usuário.
+      googleClient.silentSignIn().addOnCompleteListener(sg->{
+        com.google.android.gms.tasks.Task<Void> del;
+        if(sg.isSuccessful()&&sg.getResult()!=null&&sg.getResult().getIdToken()!=null){
+          del=u.reauthenticate(GoogleAuthProvider.getCredential(sg.getResult().getIdToken(),null)).continueWithTask(r->u.delete());
+        }else del=u.delete();
+        del.addOnCompleteListener(d->{
+          boolean ok=d.isSuccessful();
+          firebaseAuth.signOut();googleClient.revokeAccess();
+          sendJs("isl-account-deleted",ok?"{\"ok\":true}":"{\"ok\":false,\"reason\":\"auth-delete\"}");sendAuthState();
+        });
+      });
+    });
+  }
   public class AccountBridge {
     @JavascriptInterface public void signIn(){runOnUiThread(()->startActivityForResult(googleClient.getSignInIntent(),GOOGLE_LOGIN));}
+    // Exclui a conta: apaga os dados na nuvem (users, profiles, checkins, posts, went) e o usuário do Firebase Auth.
+    @JavascriptInterface public void deleteAccount(){runOnUiThread(()->deleteAccountNow());}
     @JavascriptInterface public void signOut(){runOnUiThread(()->stopCommunity());firebaseAuth.signOut();googleClient.signOut();sendAuthState();}
     @JavascriptInterface public void getAccount(){sendAuthState();}
     // Publica o perfil público (manobras aprendidas, recordes, apelido, cidade e bio) em profiles/{uid}.
