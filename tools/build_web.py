@@ -10,6 +10,8 @@ cfg = {"apiKey": "AIzaSyBkYtraY-WLs2k8k2Jw2e7mDWAijKKuX9s", "authDomain": "isl-b
 html = open(src, encoding='utf-8').read()
 head = ('<meta name="description" content="ISL BLADE: manobras de patins agressivo por nível, desafios semanais, jogos e pistas do Brasil.">'
         '<link rel="icon" href="icon.png"><link rel="apple-touch-icon" href="icon.png"><meta name="theme-color" content="#131215">'
+        '<style>html.nl-badge{--bottom-nav-height:130px}html.nl-badge .foot{padding-bottom:max(64px,env(safe-area-inset-bottom,0px))!important;align-items:flex-start}</style>'
+        '<script>(function(){function c(){if(document.getElementById("nl-badge-frame")){document.documentElement.classList.add("nl-badge");return true}}if(!c()){var o=new MutationObserver(function(){if(c())o.disconnect()});document.addEventListener("DOMContentLoaded",function(){c()||o.observe(document.body,{childList:true})})}})();</script>'
         f'<script>window.ISL_FIREBASE_CONFIG={json.dumps(cfg)};</script><script type="module" src="islweb.js"></script>')
 assert html.count('</head>') == 1
 html = html.replace('</head>', head + '</head>')
